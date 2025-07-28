@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Video Player dengan VAST Ads</title>
+    <title>JW Player dengan VAST Ads</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jwplayer/8.24.0/jwplayer.js"></script>
     <style>
         * {
             margin: 0;
@@ -46,12 +47,6 @@
             height: 100vh !important;
         }
         
-        video {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-        
         .video-wrapper {
             position: relative;
             width: 100%;
@@ -63,17 +58,17 @@
             height: 100vh !important;
         }
         
-        .video-player {
+        #jwplayer {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100% !important;
+            height: 100% !important;
         }
         
-        .embed-mode .video-player {
+        .embed-mode #jwplayer {
             position: static;
-            height: 100vh;
+            height: 100vh !important;
         }
         
         .controls-section {
@@ -102,7 +97,7 @@
             font-weight: 500;
         }
         
-        input[type="text"], input[type="url"], input[type="number"], select {
+        input[type="text"], input[type="url"], input[type="number"], select, textarea {
             width: 100%;
             padding: 12px 16px;
             background: #2a2a2a;
@@ -113,10 +108,16 @@
             transition: all 0.3s ease;
         }
         
-        input:focus, select:focus {
+        input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: #667eea;
             background: #2f2f2f;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: 'Courier New', monospace;
         }
         
         .button-group {
@@ -150,162 +151,11 @@
             margin-bottom: 20px;
         }
         
-        /* Ad Overlay Styles */
-        .ad-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.95);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        
-        .ad-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .ad-video {
-            max-width: 100%;
-            max-height: 100%;
-            width: auto;
-            height: auto;
-        }
-        
-        .ad-controls {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-        }
-        
-        .skip-button {
-            background: rgba(0,0,0,0.8);
-            border: 2px solid #fff;
-            color: #fff;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            display: none;
-        }
-        
-        .skip-countdown {
-            background: rgba(0,0,0,0.8);
-            border: 2px solid #fff;
-            color: #fff;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .quality-selector {
-            position: absolute;
-            bottom: 60px;
-            right: 20px;
-            background: rgba(0,0,0,0.8);
-            border: 1px solid #333;
-            border-radius: 4px;
-            display: none;
-        }
-        
-        .quality-option {
-            padding: 8px 16px;
-            color: #fff;
-            cursor: pointer;
-            border-bottom: 1px solid #333;
-        }
-        
-        .quality-option:hover {
-            background: rgba(255,255,255,0.1);
-        }
-        
-        .quality-option:last-child {
-            border-bottom: none;
-        }
-        
-        .video-controls {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.7));
-            padding: 20px;
-            display: flex;
-            align-items: center;
+        .quality-grid {
+            display: grid;
+            grid-template-columns: 1fr;
             gap: 15px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .video-wrapper:hover .video-controls {
-            opacity: 1;
-        }
-        
-        .play-pause-btn {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 0;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .progress-container {
-            flex: 1;
-            height: 4px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-            cursor: pointer;
-            position: relative;
-        }
-        
-        .progress-bar {
-            height: 100%;
-            background: #667eea;
-            border-radius: 2px;
-            width: 0%;
-            transition: width 0.1s ease;
-        }
-        
-        .time-display {
-            color: #fff;
-            font-size: 14px;
-            min-width: 80px;
-            text-align: center;
-        }
-        
-        .volume-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .volume-slider {
-            width: 80px;
-        }
-        
-        .quality-btn, .fullscreen-btn {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 8px;
+            margin-bottom: 20px;
         }
         
         .embed-section {
@@ -328,6 +178,16 @@
             margin-top: 10px;
         }
         
+        .success-message {
+            background: #00ff0030;
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+        
         @media (max-width: 768px) {
             .settings-grid {
                 grid-template-columns: 1fr;
@@ -337,14 +197,21 @@
                 padding: 20px;
             }
             
-            .video-controls {
-                padding: 10px;
-                gap: 10px;
+            h1 {
+                font-size: 24px;
             }
-            
-            .volume-container {
-                display: none;
-            }
+        }
+        
+        .debug-info {
+            background: #2a2a2a;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #00ff00;
+            max-height: 200px;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -352,65 +219,44 @@
     <div class="container" id="container">
         <div class="player-container">
             <div class="video-wrapper">
-                <video id="videoPlayer" class="video-player" preload="metadata" playsinline webkit-playsinline>
-                    <source src="" type="video/mp4">
-                </video>
-                
-                <div class="video-controls" id="videoControls">
-                    <button class="play-pause-btn" id="playPauseBtn">▶</button>
-                    <div class="progress-container" id="progressContainer">
-                        <div class="progress-bar" id="progressBar"></div>
-                    </div>
-                    <div class="time-display" id="timeDisplay">0:00 / 0:00</div>
-                    <div class="volume-container">
-                        <button class="play-pause-btn" id="muteBtn">🔊</button>
-                        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.1" value="1">
-                    </div>
-                    <button class="quality-btn" id="qualityBtn">HD</button>
-                    <button class="fullscreen-btn" id="fullscreenBtn">⛶</button>
-                </div>
-                
-                <div class="quality-selector" id="qualitySelector"></div>
-            </div>
-            
-            <div class="ad-overlay" id="adOverlay">
-                <div class="ad-container">
-                    <video class="ad-video" id="adVideo" autoplay muted></video>
-                    <div class="ad-controls">
-                        <div class="skip-countdown" id="skipCountdown">Skip in 5s</div>
-                        <button class="skip-button" id="skipButton">Skip Ad</button>
-                    </div>
-                </div>
+                <div id="jwplayer"></div>
             </div>
         </div>
         
         <div class="controls-section" id="controlsSection">
-            <h1>Advanced Video Player dengan VAST Ads</h1>
+            <h1>JW Player dengan VAST Ads</h1>
             
-            <div class="input-group">
-                <label for="video480p">Video 480p URL (Direct Link)</label>
-                <input type="url" id="video480p" placeholder="Direct link untuk kualitas 480p">
+            <div class="quality-grid">
+                <div class="input-group">
+                    <label for="video480p">Video 480p URL</label>
+                    <input type="url" id="video480p" placeholder="Direct link untuk kualitas 480p">
+                </div>
+                
+                <div class="input-group">
+                    <label for="video720p">Video 720p URL</label>
+                    <input type="url" id="video720p" placeholder="Direct link untuk kualitas 720p">
+                </div>
+                
+                <div class="input-group">
+                    <label for="video1080p">Video 1080p URL</label>
+                    <input type="url" id="video1080p" placeholder="Direct link untuk kualitas 1080p">
+                </div>
             </div>
             
             <div class="input-group">
-                <label for="video720p">Video 720p URL (Direct Link)</label>
-                <input type="url" id="video720p" placeholder="Direct link untuk kualitas 720p">
-            </div>
-            
-            <div class="input-group">
-                <label for="video1080p">Video 1080p URL (Direct Link)</label>
-                <input type="url" id="video1080p" placeholder="Direct link untuk kualitas 1080p">
+                <label for="vastXml">VAST XML Content atau URL</label>
+                <textarea id="vastXml" placeholder="Paste VAST XML content atau masukkan URL gist/vast"></textarea>
             </div>
             
             <div class="settings-grid">
                 <div class="input-group">
-                    <label for="vastAdUrl">VAST Ad Video URL (Direct MP4)</label>
-                    <input type="url" id="vastAdUrl" placeholder="https://example.com/ad.mp4">
+                    <label for="skipTime">Skip Button Delay (detik)</label>
+                    <input type="number" id="skipTime" value="5" min="0" max="30">
                 </div>
                 
                 <div class="input-group">
-                    <label for="skipTime">Skip Button Delay (detik)</label>
-                    <input type="number" id="skipTime" value="5" min="0" max="30">
+                    <label for="posterUrl">Poster Image URL (Optional)</label>
+                    <input type="url" id="posterUrl" placeholder="https://example.com/poster.jpg">
                 </div>
                 
                 <div class="input-group">
@@ -424,372 +270,336 @@
                 </div>
             </div>
             
-            <div class="settings-grid">
-                <div class="input-group">
-                    <label for="posterUrl">Poster Image URL (Optional)</label>
-                    <input type="url" id="posterUrl" placeholder="https://example.com/poster.jpg">
-                </div>
-            </div>
-            
             <div class="button-group">
                 <button onclick="loadVideo()">Load Video</button>
                 <button onclick="testAd()">Test VAST Ad</button>
                 <button onclick="generateEmbed()">Generate Embed Code</button>
+                <button onclick="clearDebug()">Clear Debug</button>
             </div>
+            
+            <div id="debugInfo" class="debug-info">Debug info akan muncul di sini...</div>
             
             <div id="embedSection" class="embed-section" style="display: none;">
                 <h3 style="margin-bottom: 10px;">Embed Code:</h3>
                 <div id="embedCode" class="embed-code"></div>
                 <button onclick="copyEmbed()">Copy Embed Code</button>
+                <div id="successMessage" class="success-message">Embed code berhasil disalin!</div>
             </div>
         </div>
     </div>
     
     <script>
-        let player;
+        let jwPlayer;
         let currentVideoSources = [];
-        let currentAd = null;
-        let skipTimer = null;
+        let vastXmlContent = '';
         let skipDelay = 5;
-        let adPlayed = false;
         let isEmbedMode = false;
         
-        // Initialize player
+        // Debug function
+        function debugLog(message) {
+            const debugDiv = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            debugDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearDebug() {
+            document.getElementById('debugInfo').innerHTML = 'Debug cleared...<br>';
+        }
+        
+        // Initialize JW Player
         function initializePlayer() {
-            player = document.getElementById('videoPlayer');
-            setupVideoEvents();
-            setupControls();
+            debugLog('Initializing JW Player...');
+            
+            jwPlayer = jwplayer('jwplayer').setup({
+                width: '100%',
+                height: '100%',
+                aspectratio: '16:9',
+                controls: true,
+                displaytitle: false,
+                displaydescription: false,
+                stretching: 'uniform',
+                skin: {
+                    name: 'roundster'
+                },
+                logo: {
+                    hide: true
+                }
+            });
+            
+            // Setup JW Player events
+            setupPlayerEvents();
             checkEmbedParams();
         }
         
-        // Setup video events
-        function setupVideoEvents() {
-            player.addEventListener('loadedmetadata', () => {
-                updateTimeDisplay();
-                detectVideoQualities();
+        // Setup player events
+        function setupPlayerEvents() {
+            jwPlayer.on('ready', function() {
+                debugLog('JW Player ready');
             });
             
-            player.addEventListener('timeupdate', () => {
-                updateProgress();
-                updateTimeDisplay();
+            jwPlayer.on('play', function() {
+                debugLog('Video play started');
             });
             
-            player.addEventListener('play', () => {
-                if (!adPlayed && document.getElementById('vastAdUrl').value) {
-                    playVastAd();
-                }
-                document.getElementById('playPauseBtn').textContent = '⏸';
+            jwPlayer.on('pause', function() {
+                debugLog('Video paused');
             });
             
-            player.addEventListener('pause', () => {
-                document.getElementById('playPauseBtn').textContent = '▶';
+            jwPlayer.on('error', function(e) {
+                debugLog('Player error: ' + JSON.stringify(e));
             });
             
-            player.addEventListener('ended', () => {
-                document.getElementById('playPauseBtn').textContent = '▶';
+            jwPlayer.on('adPlay', function() {
+                debugLog('Ad started playing');
+            });
+            
+            jwPlayer.on('adPause', function() {
+                debugLog('Ad paused');
+            });
+            
+            jwPlayer.on('adComplete', function() {
+                debugLog('Ad completed');
+            });
+            
+            jwPlayer.on('adSkipped', function() {
+                debugLog('Ad skipped');
+            });
+            
+            jwPlayer.on('adError', function(e) {
+                debugLog('Ad error: ' + JSON.stringify(e));
             });
         }
         
-        // Setup custom controls
-        function setupControls() {
-            const playPauseBtn = document.getElementById('playPauseBtn');
-            const progressContainer = document.getElementById('progressContainer');
-            const volumeSlider = document.getElementById('volumeSlider');
-            const muteBtn = document.getElementById('muteBtn');
-            const qualityBtn = document.getElementById('qualityBtn');
-            const fullscreenBtn = document.getElementById('fullscreenBtn');
+        // Process blogger video URL
+        function processBloggerUrl(url) {
+            debugLog('Processing blogger URL: ' + url);
             
-            playPauseBtn.addEventListener('click', togglePlayPause);
-            progressContainer.addEventListener('click', seekVideo);
-            volumeSlider.addEventListener('input', updateVolume);
-            muteBtn.addEventListener('click', toggleMute);
-            qualityBtn.addEventListener('click', toggleQualitySelector);
-            fullscreenBtn.addEventListener('click', toggleFullscreen);
-        }
-        
-        // Toggle play/pause
-        function togglePlayPause() {
-            if (player.paused) {
-                player.play();
-            } else {
-                player.pause();
+            // Add itag parameter for different qualities if not present
+            if (url.includes('blogger.com/video.g') && !url.includes('itag=')) {
+                // Default to itag=18 (360p MP4)
+                url += (url.includes('?') ? '&' : '?') + 'itag=18';
             }
-        }
-        
-        // Seek video
-        function seekVideo(e) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const percent = (e.clientX - rect.left) / rect.width;
-            player.currentTime = percent * player.duration;
-        }
-        
-        // Update progress
-        function updateProgress() {
-            if (player.duration) {
-                const percent = (player.currentTime / player.duration) * 100;
-                document.getElementById('progressBar').style.width = percent + '%';
-            }
-        }
-        
-        // Update time display
-        function updateTimeDisplay() {
-            const current = formatTime(player.currentTime);
-            const duration = formatTime(player.duration);
-            document.getElementById('timeDisplay').textContent = `${current} / ${duration}`;
-        }
-        
-        // Format time
-        function formatTime(seconds) {
-            if (isNaN(seconds)) return '0:00';
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-        
-        // Update volume
-        function updateVolume() {
-            player.volume = document.getElementById('volumeSlider').value;
-            updateMuteButton();
-        }
-        
-        // Toggle mute
-        function toggleMute() {
-            player.muted = !player.muted;
-            updateMuteButton();
-        }
-        
-        // Update mute button
-        function updateMuteButton() {
-            const muteBtn = document.getElementById('muteBtn');
-            if (player.muted || player.volume === 0) {
-                muteBtn.textContent = '🔇';
-            } else if (player.volume < 0.5) {
-                muteBtn.textContent = '🔉';
-            } else {
-                muteBtn.textContent = '🔊';
-            }
-        }
-        
-        // Toggle fullscreen with forced landscape
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                const container = document.querySelector('.video-wrapper');
-                container.requestFullscreen().then(() => {
-                    // Force landscape orientation
-                    if (screen.orientation && screen.orientation.lock) {
-                        screen.orientation.lock('landscape').catch(err => {
-                            console.log('Orientation lock not supported:', err);
-                        });
-                    }
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        }
-        
-        // Detect video qualities
-        function detectVideoQualities() {
-            // Quality detection is now handled by separate input fields
-            updateQualitySelector();
-        }
-        
-        // Parse video source options
-        function parseSourceOptions(url) {
-            // This function is no longer needed as we use separate quality inputs
-        }
-        
-        // Update quality selector
-        function updateQualitySelector() {
-            const selector = document.getElementById('qualitySelector');
-            selector.innerHTML = '';
             
-            currentVideoSources.forEach((source, index) => {
-                const option = document.createElement('div');
-                option.className = 'quality-option';
-                option.textContent = source.quality;
-                option.addEventListener('click', () => changeQuality(index));
-                selector.appendChild(option);
-            });
+            return url;
         }
         
-        // Change video quality
-        function changeQuality(index) {
-            const currentTime = player.currentTime;
-            const wasPlaying = !player.paused;
-            
-            player.src = currentVideoSources[index].url;
-            player.load();
-            
-            player.addEventListener('loadeddata', () => {
-                player.currentTime = currentTime;
-                if (wasPlaying) {
-                    player.play();
-                }
-            }, { once: true });
-            
-            document.getElementById('qualityBtn').textContent = currentVideoSources[index].quality;
-            document.getElementById('qualitySelector').style.display = 'none';
-        }
-        
-        // Toggle quality selector
-        function toggleQualitySelector() {
-            const selector = document.getElementById('qualitySelector');
-            selector.style.display = selector.style.display === 'block' ? 'none' : 'block';
-        }
-        
-        // Load video
-        function loadVideo() {
+        // Build video sources
+        function buildVideoSources() {
             const video480p = document.getElementById('video480p').value;
             const video720p = document.getElementById('video720p').value;
             const video1080p = document.getElementById('video1080p').value;
-            const posterUrl = document.getElementById('posterUrl').value;
-            const width = document.getElementById('playerWidth').value;
-            const height = document.getElementById('playerHeight').value;
             
-            // Check if at least one video quality is provided
-            if (!video480p && !video720p && !video1080p) {
+            currentVideoSources = [];
+            
+            if (video1080p) {
+                currentVideoSources.push({
+                    file: processBloggerUrl(video1080p),
+                    label: '1080p',
+                    type: 'mp4'
+                });
+            }
+            
+            if (video720p) {
+                currentVideoSources.push({
+                    file: processBloggerUrl(video720p),
+                    label: '720p',
+                    type: 'mp4'
+                });
+            }
+            
+            if (video480p) {
+                currentVideoSources.push({
+                    file: processBloggerUrl(video480p),
+                    label: '480p',
+                    type: 'mp4'
+                });
+            }
+            
+            debugLog('Built video sources: ' + JSON.stringify(currentVideoSources));
+            return currentVideoSources;
+        }
+        
+        // Parse VAST XML
+        async function parseVastXml(vastInput) {
+            debugLog('Parsing VAST XML...');
+            
+            let vastContent = '';
+            
+            // Check if input is URL or XML content
+            if (vastInput.trim().startsWith('http')) {
+                debugLog('VAST input is URL: ' + vastInput);
+                try {
+                    const response = await fetch(vastInput);
+                    vastContent = await response.text();
+                    debugLog('Fetched VAST content length: ' + vastContent.length);
+                } catch (error) {
+                    debugLog('Error fetching VAST URL: ' + error.message);
+                    return null;
+                }
+            } else {
+                vastContent = vastInput;
+                debugLog('Using direct VAST XML content');
+            }
+            
+            try {
+                // Parse XML
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(vastContent, 'text/xml');
+                
+                // Check for parsing errors
+                const parseErrors = xmlDoc.getElementsByTagName('parsererror');
+                if (parseErrors.length > 0) {
+                    debugLog('XML parsing error: ' + parseErrors[0].textContent);
+                    return null;
+                }
+                
+                // Extract media file
+                const mediaFiles = xmlDoc.getElementsByTagName('MediaFile');
+                debugLog('Found ' + mediaFiles.length + ' media files');
+                
+                if (mediaFiles.length > 0) {
+                    const mediaFile = mediaFiles[0];
+                    const adUrl = mediaFile.textContent.trim();
+                    const width = mediaFile.getAttribute('width') || '';
+                    const height = mediaFile.getAttribute('height') || '';
+                    
+                    debugLog('Ad URL found: ' + adUrl);
+                    debugLog('Ad dimensions: ' + width + 'x' + height);
+                    
+                    return {
+                        file: adUrl,
+                        skipoffset: skipDelay
+                    };
+                }
+                
+                debugLog('No MediaFile found in VAST XML');
+                return null;
+                
+            } catch (error) {
+                debugLog('Error parsing VAST XML: ' + error.message);
+                return null;
+            }
+        }
+        
+        // Load video
+        async function loadVideo() {
+            debugLog('Loading video...');
+            
+            const sources = buildVideoSources();
+            const posterUrl = document.getElementById('posterUrl').value;
+            const vastInput = document.getElementById('vastXml').value.trim();
+            
+            if (sources.length === 0) {
                 alert('Masukkan setidaknya satu URL video!');
                 return;
             }
             
             skipDelay = parseInt(document.getElementById('skipTime').value) || 5;
-            adPlayed = false;
             
-            // Build video sources array
-            currentVideoSources = [];
-            
-            if (video1080p) {
-                currentVideoSources.push({ quality: '1080p', url: video1080p });
-            }
-            if (video720p) {
-                currentVideoSources.push({ quality: '720p', url: video720p });
-            }
-            if (video480p) {
-                currentVideoSources.push({ quality: '480p', url: video480p });
-            }
-            
-            // Load the highest quality available first
-            const initialSource = currentVideoSources[0];
-            player.src = initialSource.url;
+            // Prepare player configuration
+            const config = {
+                sources: sources,
+                primary: 'html5'
+            };
             
             if (posterUrl) {
-                player.poster = posterUrl;
+                config.image = posterUrl;
             }
             
-            // Update quality selector
-            updateQualitySelector();
-            document.getElementById('qualityBtn').textContent = initialSource.quality;
-            
-            // Update container size if not in embed mode
-            if (!isEmbedMode) {
-                const container = document.querySelector('.video-wrapper');
-                container.style.paddingTop = (height / width * 100) + '%';
-            }
-            
-            player.load();
-        }
-        
-        // Process video URL for different formats
-        function processVideoUrl(url) {
-            if (url.includes('blogger.com/video.g')) {
-                // Blogger video URL - add quality parameter if not present
-                if (!url.includes('=m37')) {
-                    url += url.includes('?') ? '&itag=37' : '?itag=37';
-                }
-                return url;
-            }
-            return url;
-        }
-        
-        // Play VAST ad
-        async function playVastAd() {
-            const vastAdUrl = document.getElementById('vastAdUrl').value;
-            if (!vastAdUrl || adPlayed) return;
-            
-            try {
-                player.pause();
-                adPlayed = true;
+            // Add VAST advertising if provided
+            if (vastInput) {
+                debugLog('Processing VAST ads...');
+                const vastAd = await parseVastXml(vastInput);
                 
-                // Use direct ad URL
-                showAd(vastAdUrl);
-            } catch (error) {
-                console.error('Error loading VAST ad:', error);
-                player.play();
-            }
-        }
-        
-        // Extract ad URL from gist content
-        function extractAdUrlFromGist(gistContent) {
-            // This is a simplified parser - adjust based on actual gist content
-            const mediaFileMatch = gistContent.match(/<MediaFile[^>]*>(.*?)<\/MediaFile>/i);
-            if (mediaFileMatch) {
-                return mediaFileMatch[1].trim();
-            }
-            return null;
-        }
-        
-        // Parse VAST XML
-        function parseVastXml(vastXml) {
-            try {
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(vastXml, 'text/xml');
-                const mediaFile = xmlDoc.querySelector('MediaFile');
-                
-                if (mediaFile) {
-                    return mediaFile.textContent.trim();
-                }
-            } catch (error) {
-                console.error('Error parsing VAST XML:', error);
-            }
-            return null;
-        }
-        
-        // Show ad
-        function showAd(adUrl) {
-            const adOverlay = document.getElementById('adOverlay');
-            const adVideo = document.getElementById('adVideo');
-            const skipCountdown = document.getElementById('skipCountdown');
-            const skipButton = document.getElementById('skipButton');
-            
-            adVideo.src = adUrl;
-            adOverlay.style.display = 'flex';
-            
-            skipButton.style.display = 'none';
-            skipCountdown.style.display = 'block';
-            
-            let countdown = skipDelay;
-            skipCountdown.textContent = `Skip in ${countdown}s`;
-            
-            skipTimer = setInterval(() => {
-                countdown--;
-                if (countdown > 0) {
-                    skipCountdown.textContent = `Skip in ${countdown}s`;
+                if (vastAd) {
+                    config.advertising = {
+                        client: 'vast',
+                        schedule: {
+                            'preroll': {
+                                offset: 'pre',
+                                tag: createVastTag(vastAd.file, skipDelay)
+                            }
+                        }
+                    };
+                    debugLog('VAST advertising configured');
                 } else {
-                    skipCountdown.style.display = 'none';
-                    skipButton.style.display = 'block';
-                    clearInterval(skipTimer);
+                    debugLog('Failed to parse VAST, continuing without ads');
                 }
-            }, 1000);
+            }
             
-            adVideo.addEventListener('ended', closeAd, { once: true });
-            skipButton.addEventListener('click', closeAd, { once: true });
+            // Load configuration into player
+            jwPlayer.load(config);
+            debugLog('Video configuration loaded');
         }
         
-        // Close ad
-        function closeAd() {
-            const adOverlay = document.getElementById('adOverlay');
-            if (skipTimer) {
-                clearInterval(skipTimer);
-                skipTimer = null;
-            }
-            adOverlay.style.display = 'none';
-            player.play();
+        // Create VAST tag
+        function createVastTag(adUrl, skipOffset) {
+            const vastTag = `<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="2.0">
+    <Ad id="preroll">
+        <InLine>
+            <AdSystem>Custom Player</AdSystem>
+            <AdTitle>Pre-roll Advertisement</AdTitle>
+            <Creatives>
+                <Creative>
+                    <Linear skipoffset="00:00:${skipOffset.toString().padStart(2, '0')}">
+                        <Duration>00:00:30</Duration>
+                        <MediaFiles>
+                            <MediaFile delivery="progressive" type="video/mp4" width="854" height="480">
+                                <![CDATA[${adUrl}]]>
+                            </MediaFile>
+                        </MediaFiles>
+                    </Linear>
+                </Creative>
+            </Creatives>
+        </InLine>
+    </Ad>
+</VAST>`;
+            
+            // Convert to data URL
+            return 'data:text/xml;charset=utf-8,' + encodeURIComponent(vastTag);
         }
         
         // Test ad
-        function testAd() {
-            adPlayed = false;
-            playVastAd();
+        async function testAd() {
+            debugLog('Testing VAST ad...');
+            
+            const vastInput = document.getElementById('vastXml').value.trim();
+            
+            if (!vastInput) {
+                alert('Masukkan VAST XML atau URL terlebih dahulu!');
+                return;
+            }
+            
+            const vastAd = await parseVastXml(vastInput);
+            
+            if (vastAd) {
+                // Create test configuration with only ad
+                const testConfig = {
+                    sources: [{
+                        file: 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAf5tZGF0', // Empty video
+                        label: 'Test',
+                        type: 'mp4'
+                    }],
+                    advertising: {
+                        client: 'vast',
+                        schedule: {
+                            'preroll': {
+                                offset: 'pre',
+                                tag: createVastTag(vastAd.file, skipDelay)
+                            }
+                        }
+                    }
+                };
+                
+                jwPlayer.load(testConfig);
+                jwPlayer.play();
+                debugLog('Test ad started');
+            } else {
+                alert('Gagal memparse VAST XML!');
+            }
         }
         
         // Generate embed code
@@ -797,7 +607,7 @@
             const video480p = document.getElementById('video480p').value;
             const video720p = document.getElementById('video720p').value;
             const video1080p = document.getElementById('video1080p').value;
-            const vastAdUrl = document.getElementById('vastAdUrl').value;
+            const vastXml = document.getElementById('vastXml').value;
             const width = document.getElementById('playerWidth').value;
             const height = document.getElementById('playerHeight').value;
             const posterUrl = document.getElementById('posterUrl').value;
@@ -818,7 +628,7 @@
             if (video480p) params.append('video480p', video480p);
             if (video720p) params.append('video720p', video720p);
             if (video1080p) params.append('video1080p', video1080p);
-            if (vastAdUrl) params.append('adurl', vastAdUrl);
+            if (vastXml) params.append('vast', encodeURIComponent(vastXml));
             if (posterUrl) params.append('poster', posterUrl);
             
             const embedUrl = `${currentUrl}?${params.toString()}`;
@@ -832,7 +642,11 @@
         function copyEmbed() {
             const embedCode = document.getElementById('embedCode').textContent;
             navigator.clipboard.writeText(embedCode).then(() => {
-                alert('Embed code berhasil disalin!');
+                const successMsg = document.getElementById('successMessage');
+                successMsg.style.display = 'block';
+                setTimeout(() => {
+                    successMsg.style.display = 'none';
+                }, 3000);
             });
         }
         
@@ -860,44 +674,32 @@
                 if (video480p) document.getElementById('video480p').value = video480p;
                 if (video720p) document.getElementById('video720p').value = video720p;
                 if (video1080p) document.getElementById('video1080p').value = video1080p;
-                if (params.get('adurl')) document.getElementById('vastAdUrl').value = params.get('adurl');
+                if (params.get('vast')) document.getElementById('vastXml').value = decodeURIComponent(params.get('vast'));
                 if (params.get('poster')) document.getElementById('posterUrl').value = params.get('poster');
                 if (params.get('skip')) document.getElementById('skipTime').value = params.get('skip');
+                
+                debugLog('Embed mode detected, auto-loading video...');
                 
                 // Auto load video
                 setTimeout(() => {
                     loadVideo();
-                }, 500);
+                }, 1000);
             }
         }
         
         // Initialize on load
-        window.addEventListener('load', initializePlayer);
-        
-        // Handle fullscreen changes
-        document.addEventListener('fullscreenchange', () => {
-            const fullscreenBtn = document.getElementById('fullscreenBtn');
-            if (document.fullscreenElement) {
-                fullscreenBtn.textContent = '⛷';
-            } else {
-                fullscreenBtn.textContent = '⛶';
-                // Unlock orientation when exiting fullscreen
-                if (screen.orientation && screen.orientation.unlock) {
-                    screen.orientation.unlock();
-                }
-            }
+        window.addEventListener('load', function() {
+            debugLog('Page loaded, initializing player...');
+            initializePlayer();
         });
         
-        // Hide controls after inactivity
-        let controlsTimeout;
-        document.querySelector('.video-wrapper').addEventListener('mousemove', () => {
-            document.getElementById('videoControls').style.opacity = '1';
-            clearTimeout(controlsTimeout);
-            controlsTimeout = setTimeout(() => {
-                if (!player.paused) {
-                    document.getElementById('videoControls').style.opacity = '0';
-                }
-            }, 3000);
+        // Handle fullscreen with landscape orientation
+        jwplayer().on('fullscreen', function(e) {
+            if (e.fullscreen && screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(err => {
+                    debugLog('Orientation lock failed: ' + err.message);
+                });
+            }
         });
     </script>
 </body>
