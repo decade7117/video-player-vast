@@ -387,15 +387,30 @@
         <div class="controls-section" id="controlsSection">
             <h1>Advanced Video Player dengan VAST Ads</h1>
             
+            <div class="input-group">
+                <label for="video480p">Video 480p URL (Direct Link)</label>
+                <input type="url" id="video480p" placeholder="Direct link untuk kualitas 480p">
+            </div>
+            
+            <div class="input-group">
+                <label for="video720p">Video 720p URL (Direct Link)</label>
+                <input type="url" id="video720p" placeholder="Direct link untuk kualitas 720p">
+            </div>
+            
+            <div class="input-group">
+                <label for="video1080p">Video 1080p URL (Direct Link)</label>
+                <input type="url" id="video1080p" placeholder="Direct link untuk kualitas 1080p">
+            </div>
+            
             <div class="settings-grid">
                 <div class="input-group">
-                    <label for="videoUrl">Video URL (Direct Link atau Blogger)</label>
-                    <input type="url" id="videoUrl" placeholder="https://example.com/video.mp4 atau blogger video link">
+                    <label for="vastAdUrl">VAST Ad Video URL (Direct MP4)</label>
+                    <input type="url" id="vastAdUrl" placeholder="https://example.com/ad.mp4">
                 </div>
                 
                 <div class="input-group">
-                    <label for="vastUrl">VAST Ad Tag URL</label>
-                    <input type="url" id="vastUrl" placeholder="https://gist.github.com/decade7117/db928e9cf3f6e37f176df5afaa13524f">
+                    <label for="skipTime">Skip Button Delay (detik)</label>
+                    <input type="number" id="skipTime" value="5" min="0" max="30">
                 </div>
                 
                 <div class="input-group">
@@ -410,11 +425,6 @@
             </div>
             
             <div class="settings-grid">
-                <div class="input-group">
-                    <label for="skipTime">Skip Button Delay (detik)</label>
-                    <input type="number" id="skipTime" value="5" min="0" max="30">
-                </div>
-                
                 <div class="input-group">
                     <label for="posterUrl">Poster Image URL (Optional)</label>
                     <input type="url" id="posterUrl" placeholder="https://example.com/poster.jpg">
@@ -465,7 +475,7 @@
             });
             
             player.addEventListener('play', () => {
-                if (!adPlayed && document.getElementById('vastUrl').value) {
+                if (!adPlayed && document.getElementById('vastAdUrl').value) {
                     playVastAd();
                 }
                 document.getElementById('playPauseBtn').textContent = '⏸';
@@ -579,25 +589,13 @@
         
         // Detect video qualities
         function detectVideoQualities() {
-            // This is a simplified implementation
-            // In a real scenario, you'd parse the video URL for different quality options
-            const url = player.src;
-            if (url.includes('blogger.com')) {
-                // Try to detect blogger video qualities
-                parseSourceOptions(url);
-            }
+            // Quality detection is now handled by separate input fields
+            updateQualitySelector();
         }
         
         // Parse video source options
         function parseSourceOptions(url) {
-            // Simplified blogger video parsing
-            // You might need to adjust this based on the actual blogger video API
-            currentVideoSources = [
-                { quality: 'HD', url: url },
-                { quality: 'SD', url: url.replace('=m37', '=m18') },
-                { quality: 'Low', url: url.replace('=m37', '=m22') }
-            ];
-            updateQualitySelector();
+            // This function is no longer needed as we use separate quality inputs
         }
         
         // Update quality selector
@@ -641,26 +639,46 @@
         
         // Load video
         function loadVideo() {
-            const videoUrl = document.getElementById('videoUrl').value;
+            const video480p = document.getElementById('video480p').value;
+            const video720p = document.getElementById('video720p').value;
+            const video1080p = document.getElementById('video1080p').value;
             const posterUrl = document.getElementById('posterUrl').value;
             const width = document.getElementById('playerWidth').value;
             const height = document.getElementById('playerHeight').value;
             
-            if (!videoUrl) {
-                alert('Masukkan URL video terlebih dahulu!');
+            // Check if at least one video quality is provided
+            if (!video480p && !video720p && !video1080p) {
+                alert('Masukkan setidaknya satu URL video!');
                 return;
             }
             
             skipDelay = parseInt(document.getElementById('skipTime').value) || 5;
             adPlayed = false;
             
-            // Process different video URL formats
-            let processedUrl = processVideoUrl(videoUrl);
+            // Build video sources array
+            currentVideoSources = [];
             
-            player.src = processedUrl;
+            if (video1080p) {
+                currentVideoSources.push({ quality: '1080p', url: video1080p });
+            }
+            if (video720p) {
+                currentVideoSources.push({ quality: '720p', url: video720p });
+            }
+            if (video480p) {
+                currentVideoSources.push({ quality: '480p', url: video480p });
+            }
+            
+            // Load the highest quality available first
+            const initialSource = currentVideoSources[0];
+            player.src = initialSource.url;
+            
             if (posterUrl) {
                 player.poster = posterUrl;
             }
+            
+            // Update quality selector
+            updateQualitySelector();
+            document.getElementById('qualityBtn').textContent = initialSource.quality;
             
             // Update container size if not in embed mode
             if (!isEmbedMode) {
@@ -685,34 +703,15 @@
         
         // Play VAST ad
         async function playVastAd() {
-            const vastUrl = document.getElementById('vastUrl').value;
-            if (!vastUrl || adPlayed) return;
+            const vastAdUrl = document.getElementById('vastAdUrl').value;
+            if (!vastAdUrl || adPlayed) return;
             
             try {
                 player.pause();
                 adPlayed = true;
                 
-                let adVideoUrl;
-                
-                // Check if it's the gist URL or direct VAST XML
-                if (vastUrl.includes('gist.github.com')) {
-                    // Fetch from gist (this might need adjustment based on gist content)
-                    const response = await fetch(vastUrl);
-                    const text = await response.text();
-                    adVideoUrl = extractAdUrlFromGist(text);
-                } else {
-                    // Direct VAST XML
-                    const response = await fetch(vastUrl);
-                    const vastXml = await response.text();
-                    adVideoUrl = parseVastXml(vastXml);
-                }
-                
-                if (adVideoUrl) {
-                    showAd(adVideoUrl);
-                } else {
-                    // If no ad found, continue with main video
-                    player.play();
-                }
+                // Use direct ad URL
+                showAd(vastAdUrl);
             } catch (error) {
                 console.error('Error loading VAST ad:', error);
                 player.play();
@@ -795,27 +794,31 @@
         
         // Generate embed code
         function generateEmbed() {
-            const videoUrl = document.getElementById('videoUrl').value;
-            const vastUrl = document.getElementById('vastUrl').value;
+            const video480p = document.getElementById('video480p').value;
+            const video720p = document.getElementById('video720p').value;
+            const video1080p = document.getElementById('video1080p').value;
+            const vastAdUrl = document.getElementById('vastAdUrl').value;
             const width = document.getElementById('playerWidth').value;
             const height = document.getElementById('playerHeight').value;
             const posterUrl = document.getElementById('posterUrl').value;
             const skipTime = document.getElementById('skipTime').value;
             
-            if (!videoUrl) {
-                alert('Masukkan URL video terlebih dahulu!');
+            if (!video480p && !video720p && !video1080p) {
+                alert('Masukkan setidaknya satu URL video!');
                 return;
             }
             
             const currentUrl = window.location.href.split('?')[0];
             const params = new URLSearchParams({
-                video: videoUrl,
                 width: width,
                 height: height,
                 skip: skipTime
             });
             
-            if (vastUrl) params.append('vast', vastUrl);
+            if (video480p) params.append('video480p', video480p);
+            if (video720p) params.append('video720p', video720p);
+            if (video1080p) params.append('video1080p', video1080p);
+            if (vastAdUrl) params.append('adurl', vastAdUrl);
             if (posterUrl) params.append('poster', posterUrl);
             
             const embedUrl = `${currentUrl}?${params.toString()}`;
@@ -836,9 +839,11 @@
         // Check for embed parameters
         function checkEmbedParams() {
             const params = new URLSearchParams(window.location.search);
-            const videoUrl = params.get('video');
+            const video480p = params.get('video480p');
+            const video720p = params.get('video720p');
+            const video1080p = params.get('video1080p');
             
-            if (videoUrl) {
+            if (video480p || video720p || video1080p) {
                 isEmbedMode = true;
                 const container = document.getElementById('container');
                 const controlsSection = document.getElementById('controlsSection');
@@ -852,8 +857,10 @@
                 document.body.style.overflow = 'hidden';
                 
                 // Set values from params
-                document.getElementById('videoUrl').value = videoUrl;
-                if (params.get('vast')) document.getElementById('vastUrl').value = params.get('vast');
+                if (video480p) document.getElementById('video480p').value = video480p;
+                if (video720p) document.getElementById('video720p').value = video720p;
+                if (video1080p) document.getElementById('video1080p').value = video1080p;
+                if (params.get('adurl')) document.getElementById('vastAdUrl').value = params.get('adurl');
                 if (params.get('poster')) document.getElementById('posterUrl').value = params.get('poster');
                 if (params.get('skip')) document.getElementById('skipTime').value = params.get('skip');
                 
