@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JW Player dengan VAST Ads</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jwplayer/8.24.0/jwplayer.js"></script>
+    <title>Fluid Player dengan VAST Ads</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/fluid-player/3.6.0/fluidplayer.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fluid-player/3.6.0/fluidplayer.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -35,6 +36,7 @@
             height: 100vh !important;
             border-radius: 0 !important;
             box-shadow: none !important;
+            margin: 0 !important;
         }
         
         .player-container {
@@ -58,15 +60,15 @@
             height: 100vh !important;
         }
         
-        #jwplayer {
+        #fluidplayer {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100% !important;
-            height: 100% !important;
+            width: 100%;
+            height: 100%;
         }
         
-        .embed-mode #jwplayer {
+        .embed-mode #fluidplayer {
             position: static;
             height: 100vh !important;
         }
@@ -115,7 +117,7 @@
         }
         
         textarea {
-            min-height: 100px;
+            min-height: 80px;
             resize: vertical;
             font-family: 'Courier New', monospace;
         }
@@ -213,18 +215,47 @@
             max-height: 200px;
             overflow-y: auto;
         }
+        
+        .vast-examples {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        .vast-examples h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .vast-examples pre {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            color: #00ff00;
+            font-size: 11px;
+            overflow-x: auto;
+            margin-bottom: 10px;
+        }
+        
+        .example-button {
+            background: #4a4a4a;
+            padding: 6px 12px;
+            font-size: 12px;
+            margin: 5px 5px 0 0;
+        }
     </style>
 </head>
 <body>
     <div class="container" id="container">
         <div class="player-container">
             <div class="video-wrapper">
-                <div id="jwplayer"></div>
+                <video id="fluidplayer" controls></video>
             </div>
         </div>
         
         <div class="controls-section" id="controlsSection">
-            <h1>JW Player dengan VAST Ads</h1>
+            <h1>Fluid Player dengan VAST Ads</h1>
             
             <div class="quality-grid">
                 <div class="input-group">
@@ -244,8 +275,34 @@
             </div>
             
             <div class="input-group">
-                <label for="vastXml">VAST XML Content atau URL</label>
-                <textarea id="vastXml" placeholder="Paste VAST XML content atau masukkan URL gist/vast"></textarea>
+                <label for="adVideoUrl">Ad Video URL (Direct MP4)</label>
+                <input type="url" id="adVideoUrl" placeholder="https://example.com/ad.mp4">
+                <div class="vast-examples">
+                    <h4>VAST XML Template:</h4>
+                    <button class="example-button" onclick="loadSampleVast()">Load Sample VAST</button>
+                    <button class="example-button" onclick="fetchGistVast()">Fetch from Gist</button>
+                    <pre id="vastTemplate">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;VAST version="2.0"&gt;
+  &lt;Ad id="preroll"&gt;
+    &lt;InLine&gt;
+      &lt;AdSystem&gt;Custom Player&lt;/AdSystem&gt;
+      &lt;AdTitle&gt;Sample Ad&lt;/AdTitle&gt;
+      &lt;Creatives&gt;
+        &lt;Creative&gt;
+          &lt;Linear&gt;
+            &lt;Duration&gt;00:00:15&lt;/Duration&gt;
+            &lt;MediaFiles&gt;
+              &lt;MediaFile delivery="progressive" type="video/mp4"&gt;
+                &lt;![CDATA[AD_VIDEO_URL_HERE]]&gt;
+              &lt;/MediaFile&gt;
+            &lt;/MediaFiles&gt;
+          &lt;/Linear&gt;
+        &lt;/Creative&gt;
+      &lt;/Creatives&gt;
+    &lt;/InLine&gt;
+  &lt;/Ad&gt;
+&lt;/VAST&gt;</pre>
+                </div>
             </div>
             
             <div class="settings-grid">
@@ -272,7 +329,7 @@
             
             <div class="button-group">
                 <button onclick="loadVideo()">Load Video</button>
-                <button onclick="testAd()">Test VAST Ad</button>
+                <button onclick="testAd()">Test Ad</button>
                 <button onclick="generateEmbed()">Generate Embed Code</button>
                 <button onclick="clearDebug()">Clear Debug</button>
             </div>
@@ -289,9 +346,8 @@
     </div>
     
     <script>
-        let jwPlayer;
+        let fluidPlayerInstance;
         let currentVideoSources = [];
-        let vastXmlContent = '';
         let skipDelay = 5;
         let isEmbedMode = false;
         
@@ -308,80 +364,23 @@
             document.getElementById('debugInfo').innerHTML = 'Debug cleared...<br>';
         }
         
-        // Initialize JW Player
-        function initializePlayer() {
-            debugLog('Initializing JW Player...');
-            
-            jwPlayer = jwplayer('jwplayer').setup({
-                width: '100%',
-                height: '100%',
-                aspectratio: '16:9',
-                controls: true,
-                displaytitle: false,
-                displaydescription: false,
-                stretching: 'uniform',
-                skin: {
-                    name: 'roundster'
-                },
-                logo: {
-                    hide: true
-                }
-            });
-            
-            // Setup JW Player events
-            setupPlayerEvents();
-            checkEmbedParams();
-        }
-        
-        // Setup player events
-        function setupPlayerEvents() {
-            jwPlayer.on('ready', function() {
-                debugLog('JW Player ready');
-            });
-            
-            jwPlayer.on('play', function() {
-                debugLog('Video play started');
-            });
-            
-            jwPlayer.on('pause', function() {
-                debugLog('Video paused');
-            });
-            
-            jwPlayer.on('error', function(e) {
-                debugLog('Player error: ' + JSON.stringify(e));
-            });
-            
-            jwPlayer.on('adPlay', function() {
-                debugLog('Ad started playing');
-            });
-            
-            jwPlayer.on('adPause', function() {
-                debugLog('Ad paused');
-            });
-            
-            jwPlayer.on('adComplete', function() {
-                debugLog('Ad completed');
-            });
-            
-            jwPlayer.on('adSkipped', function() {
-                debugLog('Ad skipped');
-            });
-            
-            jwPlayer.on('adError', function(e) {
-                debugLog('Ad error: ' + JSON.stringify(e));
-            });
-        }
-        
-        // Process blogger video URL
+        // Process blogger video URL to direct stream
         function processBloggerUrl(url) {
             debugLog('Processing blogger URL: ' + url);
             
-            // Add itag parameter for different qualities if not present
-            if (url.includes('blogger.com/video.g') && !url.includes('itag=')) {
-                // Default to itag=18 (360p MP4)
-                url += (url.includes('?') ? '&' : '?') + 'itag=18';
+            if (url.includes('blogger.com/video.g')) {
+                // Convert blogger URL to direct stream
+                // Add parameters for better compatibility
+                if (!url.includes('itag=')) {
+                    url += (url.includes('?') ? '&' : '?') + 'itag=18';
+                }
+                // Force MP4 format
+                if (!url.includes('mime=')) {
+                    url += '&mime=video/mp4';
+                }
             }
             
+            debugLog('Processed URL: ' + url);
             return url;
         }
         
@@ -395,25 +394,22 @@
             
             if (video1080p) {
                 currentVideoSources.push({
-                    file: processBloggerUrl(video1080p),
-                    label: '1080p',
-                    type: 'mp4'
+                    src: processBloggerUrl(video1080p),
+                    title: '1080p'
                 });
             }
             
             if (video720p) {
                 currentVideoSources.push({
-                    file: processBloggerUrl(video720p),
-                    label: '720p',
-                    type: 'mp4'
+                    src: processBloggerUrl(video720p),
+                    title: '720p'
                 });
             }
             
             if (video480p) {
                 currentVideoSources.push({
-                    file: processBloggerUrl(video480p),
-                    label: '480p',
-                    type: 'mp4'
+                    src: processBloggerUrl(video480p),
+                    title: '480p'
                 });
             }
             
@@ -421,75 +417,64 @@
             return currentVideoSources;
         }
         
-        // Parse VAST XML
-        async function parseVastXml(vastInput) {
-            debugLog('Parsing VAST XML...');
+        // Create VAST XML from ad URL
+        function createVastXml(adUrl, duration = 15) {
+            const vastXml = `<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="2.0">
+    <Ad id="preroll-ad">
+        <InLine>
+            <AdSystem>Custom Player</AdSystem>
+            <AdTitle>Pre-roll Advertisement</AdTitle>
+            <Description>Advertisement</Description>
+            <Creatives>
+                <Creative sequence="1" id="1">
+                    <Linear skipoffset="00:00:${skipDelay.toString().padStart(2, '0')}">
+                        <Duration>00:00:${duration.toString().padStart(2, '0')}</Duration>
+                        <MediaFiles>
+                            <MediaFile delivery="progressive" type="video/mp4" width="854" height="480">
+                                <![CDATA[${adUrl}]]>
+                            </MediaFile>
+                        </MediaFiles>
+                        <VideoClicks>
+                            <ClickThrough><![CDATA[#]]></ClickThrough>
+                        </VideoClicks>
+                    </Linear>
+                </Creative>
+            </Creatives>
+        </InLine>
+    </Ad>
+</VAST>`;
             
-            let vastContent = '';
-            
-            // Check if input is URL or XML content
-            if (vastInput.trim().startsWith('http')) {
-                debugLog('VAST input is URL: ' + vastInput);
-                try {
-                    const response = await fetch(vastInput);
-                    vastContent = await response.text();
-                    debugLog('Fetched VAST content length: ' + vastContent.length);
-                } catch (error) {
-                    debugLog('Error fetching VAST URL: ' + error.message);
-                    return null;
-                }
-            } else {
-                vastContent = vastInput;
-                debugLog('Using direct VAST XML content');
-            }
-            
-            try {
-                // Parse XML
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(vastContent, 'text/xml');
-                
-                // Check for parsing errors
-                const parseErrors = xmlDoc.getElementsByTagName('parsererror');
-                if (parseErrors.length > 0) {
-                    debugLog('XML parsing error: ' + parseErrors[0].textContent);
-                    return null;
-                }
-                
-                // Extract media file
-                const mediaFiles = xmlDoc.getElementsByTagName('MediaFile');
-                debugLog('Found ' + mediaFiles.length + ' media files');
-                
-                if (mediaFiles.length > 0) {
-                    const mediaFile = mediaFiles[0];
-                    const adUrl = mediaFile.textContent.trim();
-                    const width = mediaFile.getAttribute('width') || '';
-                    const height = mediaFile.getAttribute('height') || '';
-                    
-                    debugLog('Ad URL found: ' + adUrl);
-                    debugLog('Ad dimensions: ' + width + 'x' + height);
-                    
-                    return {
-                        file: adUrl,
-                        skipoffset: skipDelay
-                    };
-                }
-                
-                debugLog('No MediaFile found in VAST XML');
-                return null;
-                
-            } catch (error) {
-                debugLog('Error parsing VAST XML: ' + error.message);
-                return null;
-            }
+            debugLog('Created VAST XML with ad URL: ' + adUrl);
+            return vastXml;
         }
         
-        // Load video
-        async function loadVideo() {
+        // Initialize Fluid Player
+        function initializePlayer() {
+            debugLog('Initializing Fluid Player...');
+            
+            // Destroy existing player if exists
+            if (fluidPlayerInstance) {
+                try {
+                    fluidPlayerInstance.destroy();
+                } catch (e) {
+                    debugLog('Error destroying previous player: ' + e.message);
+                }
+            }
+            
+            const videoElement = document.getElementById('fluidplayer');
+            videoElement.innerHTML = ''; // Clear any existing content
+            
+            checkEmbedParams();
+        }
+        
+        // Load video with Fluid Player
+        function loadVideo() {
             debugLog('Loading video...');
             
             const sources = buildVideoSources();
             const posterUrl = document.getElementById('posterUrl').value;
-            const vastInput = document.getElementById('vastXml').value.trim();
+            const adVideoUrl = document.getElementById('adVideoUrl').value.trim();
             
             if (sources.length === 0) {
                 alert('Masukkan setidaknya satu URL video!');
@@ -498,107 +483,189 @@
             
             skipDelay = parseInt(document.getElementById('skipTime').value) || 5;
             
-            // Prepare player configuration
-            const config = {
-                sources: sources,
-                primary: 'html5'
-            };
-            
-            if (posterUrl) {
-                config.image = posterUrl;
-            }
-            
-            // Add VAST advertising if provided
-            if (vastInput) {
-                debugLog('Processing VAST ads...');
-                const vastAd = await parseVastXml(vastInput);
-                
-                if (vastAd) {
-                    config.advertising = {
-                        client: 'vast',
-                        schedule: {
-                            'preroll': {
-                                offset: 'pre',
-                                tag: createVastTag(vastAd.file, skipDelay)
-                            }
-                        }
-                    };
-                    debugLog('VAST advertising configured');
-                } else {
-                    debugLog('Failed to parse VAST, continuing without ads');
+            // Destroy existing player
+            if (fluidPlayerInstance) {
+                try {
+                    fluidPlayerInstance.destroy();
+                } catch (e) {
+                    debugLog('Error destroying player: ' + e.message);
                 }
             }
             
-            // Load configuration into player
-            jwPlayer.load(config);
-            debugLog('Video configuration loaded');
+            // Set video source (use highest quality available)
+            const videoElement = document.getElementById('fluidplayer');
+            videoElement.src = sources[0].src;
+            
+            if (posterUrl) {
+                videoElement.poster = posterUrl;
+            }
+            
+            // Fluid Player configuration
+            const fluidConfig = {
+                layoutControls: {
+                    fillToContainer: true,
+                    autoPlay: false,
+                    mute: false,
+                    allowTheatre: true,
+                    playPauseAnimation: true,
+                    playbackRateEnabled: true,
+                    allowDownload: false,
+                    playButtonShowing: true,
+                    playPauseAnimation: true,
+                    controlBar: {
+                        autoHide: true,
+                        autoHideTimeout: 3,
+                        animated: true
+                    },
+                    htmlOnPauseBlock: {
+                        html: null,
+                        height: null,
+                        width: null
+                    },
+                    logo: {
+                        imageUrl: null,
+                        position: 'top-left',
+                        clickUrl: null,
+                        opacity: 1
+                    }
+                },
+                vastOptions: {
+                    adText: 'Advertisement',
+                    adTextPosition: 'top-left',
+                    adCTAText: 'Visit Site',
+                    adCTATextPosition: 'bottom-right',
+                    adSkipButtonText: 'Skip Ad',
+                    skipButtonCaption: 'Skip ad in',
+                    skipButtonClickCaption: 'Skip Ad',
+                    adClickable: true,
+                    vastTimeout: 10000,
+                    showProgressbarMarkers: true,
+                    allowVPAID: false,
+                    maxAllowedVastTagRedirects: 3,
+                    vastAdvanced: {
+                        vastLoadedCallback: function() {
+                            debugLog('VAST ad loaded successfully');
+                        },
+                        noVastVideoCallback: function() {
+                            debugLog('No VAST video found');
+                        },
+                        vastVideoSkippedCallback: function() {
+                            debugLog('VAST ad skipped');
+                        },
+                        vastVideoEndedCallback: function() {
+                            debugLog('VAST ad ended');
+                        }
+                    }
+                }
+            };
+            
+            // Add VAST advertising if ad URL provided
+            if (adVideoUrl) {
+                debugLog('Adding VAST advertising...');
+                const vastXml = createVastXml(adVideoUrl);
+                
+                // Convert VAST XML to data URL
+                const vastDataUrl = 'data:text/xml;charset=utf-8,' + encodeURIComponent(vastXml);
+                
+                fluidConfig.vastOptions.adList = [{
+                    roll: 'preRoll',
+                    vastTag: vastDataUrl,
+                    adText: 'Advertisement'
+                }];
+                
+                debugLog('VAST configuration added');
+            }
+            
+            // Initialize Fluid Player
+            try {
+                fluidPlayerInstance = fluidPlayer('fluidplayer', fluidConfig);
+                debugLog('Fluid Player initialized successfully');
+                
+                // Add multiple sources for quality selection
+                if (sources.length > 1) {
+                    setTimeout(() => {
+                        addQualityOptions(sources);
+                    }, 1000);
+                }
+                
+            } catch (error) {
+                debugLog('Error initializing Fluid Player: ' + error.message);
+            }
         }
         
-        // Create VAST tag
-        function createVastTag(adUrl, skipOffset) {
-            const vastTag = `<?xml version="1.0" encoding="UTF-8"?>
-<VAST version="2.0">
-    <Ad id="preroll">
-        <InLine>
-            <AdSystem>Custom Player</AdSystem>
-            <AdTitle>Pre-roll Advertisement</AdTitle>
-            <Creatives>
-                <Creative>
-                    <Linear skipoffset="00:00:${skipOffset.toString().padStart(2, '0')}">
-                        <Duration>00:00:30</Duration>
-                        <MediaFiles>
-                            <MediaFile delivery="progressive" type="video/mp4" width="854" height="480">
-                                <![CDATA[${adUrl}]]>
-                            </MediaFile>
-                        </MediaFiles>
-                    </Linear>
-                </Creative>
-            </Creatives>
-        </InLine>
-    </Ad>
-</VAST>`;
-            
-            // Convert to data URL
-            return 'data:text/xml;charset=utf-8,' + encodeURIComponent(vastTag);
+        // Add quality options (simplified version)
+        function addQualityOptions(sources) {
+            // This is a simplified implementation
+            // Fluid Player has limited built-in quality switching
+            debugLog('Multiple quality sources available: ' + sources.length);
         }
         
         // Test ad
-        async function testAd() {
-            debugLog('Testing VAST ad...');
+        function testAd() {
+            debugLog('Testing ad...');
             
-            const vastInput = document.getElementById('vastXml').value.trim();
+            const adVideoUrl = document.getElementById('adVideoUrl').value.trim();
             
-            if (!vastInput) {
-                alert('Masukkan VAST XML atau URL terlebih dahulu!');
+            if (!adVideoUrl) {
+                alert('Masukkan Ad Video URL terlebih dahulu!');
                 return;
             }
             
-            const vastAd = await parseVastXml(vastInput);
+            // Create a test video with only ad
+            const testSources = [{
+                src: 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAABhJtZGF0', // Minimal video
+                title: 'Test'
+            }];
             
-            if (vastAd) {
-                // Create test configuration with only ad
-                const testConfig = {
-                    sources: [{
-                        file: 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAf5tZGF0', // Empty video
-                        label: 'Test',
-                        type: 'mp4'
-                    }],
-                    advertising: {
-                        client: 'vast',
-                        schedule: {
-                            'preroll': {
-                                offset: 'pre',
-                                tag: createVastTag(vastAd.file, skipDelay)
-                            }
-                        }
-                    }
-                };
+            // Temporarily set test sources
+            const originalSources = currentVideoSources;
+            currentVideoSources = testSources;
+            
+            // Load with ad
+            loadVideo();
+            
+            // Restore original sources
+            setTimeout(() => {
+                currentVideoSources = originalSources;
+            }, 1000);
+        }
+        
+        // Load sample VAST
+        function loadSampleVast() {
+            document.getElementById('adVideoUrl').value = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+            debugLog('Sample VAST ad URL loaded');
+        }
+        
+        // Fetch VAST from Gist (with CORS workaround)
+        async function fetchGistVast() {
+            debugLog('Attempting to fetch VAST from gist...');
+            
+            const gistUrl = 'https://gist.githubusercontent.com/decade7117/db928e9cf3f6e37f176df5afaa13524f/raw/';
+            
+            try {
+                // Try to fetch the raw gist content
+                const response = await fetch(gistUrl);
+                const vastContent = await response.text();
                 
-                jwPlayer.load(testConfig);
-                jwPlayer.play();
-                debugLog('Test ad started');
-            } else {
-                alert('Gagal memparse VAST XML!');
+                debugLog('Gist content fetched, length: ' + vastContent.length);
+                
+                // Try to parse and extract media file URL
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(vastContent, 'text/xml');
+                const mediaFile = xmlDoc.querySelector('MediaFile');
+                
+                if (mediaFile) {
+                    const adUrl = mediaFile.textContent.trim();
+                    document.getElementById('adVideoUrl').value = adUrl;
+                    debugLog('Ad URL extracted from gist: ' + adUrl);
+                } else {
+                    debugLog('No MediaFile found in gist content');
+                }
+                
+            } catch (error) {
+                debugLog('Error fetching from gist: ' + error.message);
+                // Fallback: provide manual instructions
+                alert('CORS error. Please manually copy the MediaFile URL from the gist and paste it in the Ad Video URL field.');
             }
         }
         
@@ -607,7 +674,7 @@
             const video480p = document.getElementById('video480p').value;
             const video720p = document.getElementById('video720p').value;
             const video1080p = document.getElementById('video1080p').value;
-            const vastXml = document.getElementById('vastXml').value;
+            const adVideoUrl = document.getElementById('adVideoUrl').value;
             const width = document.getElementById('playerWidth').value;
             const height = document.getElementById('playerHeight').value;
             const posterUrl = document.getElementById('posterUrl').value;
@@ -628,7 +695,7 @@
             if (video480p) params.append('video480p', video480p);
             if (video720p) params.append('video720p', video720p);
             if (video1080p) params.append('video1080p', video1080p);
-            if (vastXml) params.append('vast', encodeURIComponent(vastXml));
+            if (adVideoUrl) params.append('adurl', adVideoUrl);
             if (posterUrl) params.append('poster', posterUrl);
             
             const embedUrl = `${currentUrl}?${params.toString()}`;
@@ -674,7 +741,7 @@
                 if (video480p) document.getElementById('video480p').value = video480p;
                 if (video720p) document.getElementById('video720p').value = video720p;
                 if (video1080p) document.getElementById('video1080p').value = video1080p;
-                if (params.get('vast')) document.getElementById('vastXml').value = decodeURIComponent(params.get('vast'));
+                if (params.get('adurl')) document.getElementById('adVideoUrl').value = params.get('adurl');
                 if (params.get('poster')) document.getElementById('posterUrl').value = params.get('poster');
                 if (params.get('skip')) document.getElementById('skipTime').value = params.get('skip');
                 
@@ -693,12 +760,11 @@
             initializePlayer();
         });
         
-        // Handle fullscreen with landscape orientation
-        jwplayer().on('fullscreen', function(e) {
-            if (e.fullscreen && screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(err => {
-                    debugLog('Orientation lock failed: ' + err.message);
-                });
+        // Handle window resize for responsive player
+        window.addEventListener('resize', function() {
+            if (fluidPlayerInstance && isEmbedMode) {
+                // Handle responsive resize if needed
+                debugLog('Window resized in embed mode');
             }
         });
     </script>
