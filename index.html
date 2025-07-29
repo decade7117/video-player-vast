@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fluid Player dengan VAST Ads</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/fluid-player/3.6.0/fluidplayer.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fluid-player/3.6.0/fluidplayer.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -52,7 +50,7 @@
         .video-wrapper {
             position: relative;
             width: 100%;
-            padding-top: 56.25%; /* 16:9 aspect ratio */
+            padding-top: 56.25%;
         }
         
         .embed-mode .video-wrapper {
@@ -190,20 +188,6 @@
             display: none;
         }
         
-        @media (max-width: 768px) {
-            .settings-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .controls-section {
-                padding: 20px;
-            }
-            
-            h1 {
-                font-size: 24px;
-            }
-        }
-        
         .debug-info {
             background: #2a2a2a;
             padding: 15px;
@@ -244,13 +228,50 @@
             font-size: 12px;
             margin: 5px 5px 0 0;
         }
+        
+        .quality-selector {
+            position: absolute;
+            bottom: 50px;
+            right: 15px;
+            z-index: 1000;
+        }
+        
+        .quality-btn {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 2px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .quality-btn.active {
+            background: #667eea;
+        }
+        
+        @media (max-width: 768px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls-section {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container" id="container">
         <div class="player-container">
             <div class="video-wrapper">
-                <video id="fluidplayer" controls></video>
+                <video id="fluidplayer" controls preload="metadata"></video>
+                <div id="qualitySelector" class="quality-selector" style="display: none;"></div>
             </div>
         </div>
         
@@ -278,30 +299,9 @@
                 <label for="adVideoUrl">Ad Video URL (Direct MP4)</label>
                 <input type="url" id="adVideoUrl" placeholder="https://example.com/ad.mp4">
                 <div class="vast-examples">
-                    <h4>VAST XML Template:</h4>
-                    <button class="example-button" onclick="loadSampleVast()">Load Sample VAST</button>
-                    <button class="example-button" onclick="fetchGistVast()">Fetch from Gist</button>
-                    <pre id="vastTemplate">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;VAST version="2.0"&gt;
-  &lt;Ad id="preroll"&gt;
-    &lt;InLine&gt;
-      &lt;AdSystem&gt;Custom Player&lt;/AdSystem&gt;
-      &lt;AdTitle&gt;Sample Ad&lt;/AdTitle&gt;
-      &lt;Creatives&gt;
-        &lt;Creative&gt;
-          &lt;Linear&gt;
-            &lt;Duration&gt;00:00:15&lt;/Duration&gt;
-            &lt;MediaFiles&gt;
-              &lt;MediaFile delivery="progressive" type="video/mp4"&gt;
-                &lt;![CDATA[AD_VIDEO_URL_HERE]]&gt;
-              &lt;/MediaFile&gt;
-            &lt;/MediaFiles&gt;
-          &lt;/Linear&gt;
-        &lt;/Creative&gt;
-      &lt;/Creatives&gt;
-    &lt;/InLine&gt;
-  &lt;/Ad&gt;
-&lt;/VAST&gt;</pre>
+                    <h4>Sample Ad URLs:</h4>
+                    <button class="example-button" onclick="loadSampleAd()">Load Sample Ad</button>
+                    <button class="example-button" onclick="loadTestAd()">Load Test Ad</button>
                 </div>
             </div>
             
@@ -329,7 +329,7 @@
             
             <div class="button-group">
                 <button onclick="loadVideo()">Load Video</button>
-                <button onclick="testAd()">Test Ad</button>
+                <button onclick="testAd()">Test Ad Only</button>
                 <button onclick="generateEmbed()">Generate Embed Code</button>
                 <button onclick="clearDebug()">Clear Debug</button>
             </div>
@@ -345,11 +345,16 @@
         </div>
     </div>
     
+    <!-- Load Fluid Player from CDN -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/fluid-player/3.6.0/fluidplayer.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fluid-player/3.6.0/fluidplayer.min.js"></script>
+    
     <script>
         let fluidPlayerInstance;
         let currentVideoSources = [];
         let skipDelay = 5;
         let isEmbedMode = false;
+        let currentQuality = 0;
         
         // Debug function
         function debugLog(message) {
@@ -364,80 +369,95 @@
             document.getElementById('debugInfo').innerHTML = 'Debug cleared...<br>';
         }
         
-        // Process blogger video URL to direct stream
+        // Convert Blogger URL to direct stream
         function processBloggerUrl(url) {
-            debugLog('Processing blogger URL: ' + url);
+            debugLog('Processing URL: ' + url);
             
             if (url.includes('blogger.com/video.g')) {
-                // Convert blogger URL to direct stream
-                // Add parameters for better compatibility
-                if (!url.includes('itag=')) {
-                    url += (url.includes('?') ? '&' : '?') + 'itag=18';
+                // For Blogger videos, we need to add specific parameters
+                const urlObj = new URL(url);
+                
+                // Add necessary parameters for direct streaming
+                if (!urlObj.searchParams.has('itag')) {
+                    urlObj.searchParams.set('itag', '18'); // MP4 360p
                 }
-                // Force MP4 format
-                if (!url.includes('mime=')) {
-                    url += '&mime=video/mp4';
-                }
+                
+                // Force download instead of streaming to avoid CORS
+                urlObj.searchParams.set('source', 'fallback');
+                
+                const processedUrl = urlObj.toString();
+                debugLog('Processed Blogger URL: ' + processedUrl);
+                return processedUrl;
             }
             
-            debugLog('Processed URL: ' + url);
             return url;
         }
         
-        // Build video sources
+        // Build video sources with quality options
         function buildVideoSources() {
-            const video480p = document.getElementById('video480p').value;
-            const video720p = document.getElementById('video720p').value;
-            const video1080p = document.getElementById('video1080p').value;
+            const video480p = document.getElementById('video480p').value.trim();
+            const video720p = document.getElementById('video720p').value.trim();
+            const video1080p = document.getElementById('video1080p').value.trim();
             
             currentVideoSources = [];
             
+            // Add sources in order of quality (highest first)
             if (video1080p) {
                 currentVideoSources.push({
                     src: processBloggerUrl(video1080p),
-                    title: '1080p'
+                    title: '1080p',
+                    quality: 1080
                 });
             }
             
             if (video720p) {
                 currentVideoSources.push({
                     src: processBloggerUrl(video720p),
-                    title: '720p'
+                    title: '720p',
+                    quality: 720
                 });
             }
             
             if (video480p) {
                 currentVideoSources.push({
                     src: processBloggerUrl(video480p),
-                    title: '480p'
+                    title: '480p',
+                    quality: 480
                 });
             }
             
-            debugLog('Built video sources: ' + JSON.stringify(currentVideoSources));
+            debugLog(`Built ${currentVideoSources.length} video sources`);
             return currentVideoSources;
         }
         
-        // Create VAST XML from ad URL
+        // Create VAST XML for ads
         function createVastXml(adUrl, duration = 15) {
+            skipDelay = parseInt(document.getElementById('skipTime').value) || 5;
+            
             const vastXml = `<?xml version="1.0" encoding="UTF-8"?>
-<VAST version="2.0">
-    <Ad id="preroll-ad">
+<VAST version="3.0">
+    <Ad id="preroll-ad-1">
         <InLine>
-            <AdSystem>Custom Player</AdSystem>
-            <AdTitle>Pre-roll Advertisement</AdTitle>
-            <Description>Advertisement</Description>
+            <AdSystem version="1.0">Custom Player</AdSystem>
+            <AdTitle><![CDATA[Pre-roll Advertisement]]></AdTitle>
+            <Impression><![CDATA[#]]></Impression>
             <Creatives>
-                <Creative sequence="1" id="1">
+                <Creative id="creative-1" sequence="1">
                     <Linear skipoffset="00:00:${skipDelay.toString().padStart(2, '0')}">
-                        <Duration>00:00:${duration.toString().padStart(2, '0')}</Duration>
+                        <Duration>00:${duration.toString().padStart(2, '0')}:00</Duration>
                         <MediaFiles>
                             <MediaFile delivery="progressive" type="video/mp4" width="854" height="480">
                                 <![CDATA[${adUrl}]]>
                             </MediaFile>
                         </MediaFiles>
                         <VideoClicks>
-                            <ClickThrough><![CDATA[#]]></ClickThrough>
+                            <ClickThrough><![CDATA[about:blank]]></ClickThrough>
                         </VideoClicks>
+                        <TrackingEvents>
+                            <Tracking event="start"><![CDATA[#]]></Tracking>
+                            <Tracking event="complete"><![CDATA[#]]></Tracking>
+                            <Tracking event="skip"><![CDATA[#]]></Tracking>
+                        </TrackingEvents>
                     </Linear>
                 </Creative>
             </Creatives>
@@ -445,35 +465,63 @@
     </Ad>
 </VAST>`;
             
-            debugLog('Created VAST XML with ad URL: ' + adUrl);
+            debugLog('Created VAST XML for ad: ' + adUrl);
             return vastXml;
         }
         
-        // Initialize Fluid Player
-        function initializePlayer() {
-            debugLog('Initializing Fluid Player...');
+        // Create quality selector buttons
+        function createQualitySelector() {
+            const qualitySelector = document.getElementById('qualitySelector');
+            qualitySelector.innerHTML = '';
             
-            // Destroy existing player if exists
-            if (fluidPlayerInstance) {
-                try {
-                    fluidPlayerInstance.destroy();
-                } catch (e) {
-                    debugLog('Error destroying previous player: ' + e.message);
-                }
+            if (currentVideoSources.length > 1) {
+                qualitySelector.style.display = 'block';
+                
+                currentVideoSources.forEach((source, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'quality-btn' + (index === currentQuality ? ' active' : '');
+                    btn.textContent = source.title;
+                    btn.onclick = () => switchQuality(index);
+                    qualitySelector.appendChild(btn);
+                });
+                
+                debugLog(`Created quality selector with ${currentVideoSources.length} options`);
+            } else {
+                qualitySelector.style.display = 'none';
             }
-            
-            const videoElement = document.getElementById('fluidplayer');
-            videoElement.innerHTML = ''; // Clear any existing content
-            
-            checkEmbedParams();
         }
         
-        // Load video with Fluid Player
+        // Switch video quality
+        function switchQuality(index) {
+            if (index === currentQuality || !currentVideoSources[index]) return;
+            
+            const video = document.getElementById('fluidplayer');
+            const currentTime = video.currentTime;
+            const wasPlaying = !video.paused;
+            
+            currentQuality = index;
+            video.src = currentVideoSources[index].src;
+            
+            video.addEventListener('loadedmetadata', function onLoadedMetadata() {
+                video.currentTime = currentTime;
+                if (wasPlaying) video.play();
+                video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            });
+            
+            // Update active button
+            document.querySelectorAll('.quality-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+            
+            debugLog(`Switched to quality: ${currentVideoSources[index].title}`);
+        }
+        
+        // Initialize Fluid Player
         function loadVideo() {
             debugLog('Loading video...');
             
             const sources = buildVideoSources();
-            const posterUrl = document.getElementById('posterUrl').value;
+            const posterUrl = document.getElementById('posterUrl').value.trim();
             const adVideoUrl = document.getElementById('adVideoUrl').value.trim();
             
             if (sources.length === 0) {
@@ -481,24 +529,37 @@
                 return;
             }
             
-            skipDelay = parseInt(document.getElementById('skipTime').value) || 5;
-            
             // Destroy existing player
-            if (fluidPlayerInstance) {
+            if (fluidPlayerInstance && typeof fluidPlayerInstance.destroy === 'function') {
                 try {
                     fluidPlayerInstance.destroy();
+                    debugLog('Previous player destroyed');
                 } catch (e) {
-                    debugLog('Error destroying player: ' + e.message);
+                    debugLog('Error destroying previous player: ' + e.message);
                 }
             }
             
-            // Set video source (use highest quality available)
             const videoElement = document.getElementById('fluidplayer');
-            videoElement.src = sources[0].src;
             
+            // Clear previous video
+            videoElement.src = '';
+            videoElement.innerHTML = '';
+            
+            // Set poster if provided
             if (posterUrl) {
                 videoElement.poster = posterUrl;
             }
+            
+            // Wait for Fluid Player to be available
+            if (typeof fluidPlayer === 'undefined') {
+                debugLog('Fluid Player not loaded yet, retrying...');
+                setTimeout(loadVideo, 1000);
+                return;
+            }
+            
+            // Set the primary video source
+            videoElement.src = sources[0].src;
+            currentQuality = 0;
             
             // Fluid Player configuration
             const fluidConfig = {
@@ -506,55 +567,19 @@
                     fillToContainer: true,
                     autoPlay: false,
                     mute: false,
-                    allowTheatre: true,
+                    allowTheatre: !isEmbedMode,
                     playPauseAnimation: true,
                     playbackRateEnabled: true,
                     allowDownload: false,
                     playButtonShowing: true,
-                    playPauseAnimation: true,
                     controlBar: {
                         autoHide: true,
                         autoHideTimeout: 3,
                         animated: true
                     },
-                    htmlOnPauseBlock: {
-                        html: null,
-                        height: null,
-                        width: null
-                    },
                     logo: {
                         imageUrl: null,
-                        position: 'top-left',
-                        clickUrl: null,
-                        opacity: 1
-                    }
-                },
-                vastOptions: {
-                    adText: 'Advertisement',
-                    adTextPosition: 'top-left',
-                    adCTAText: 'Visit Site',
-                    adCTATextPosition: 'bottom-right',
-                    adSkipButtonText: 'Skip Ad',
-                    skipButtonCaption: 'Skip ad in',
-                    skipButtonClickCaption: 'Skip Ad',
-                    adClickable: true,
-                    vastTimeout: 10000,
-                    showProgressbarMarkers: true,
-                    allowVPAID: false,
-                    maxAllowedVastTagRedirects: 3,
-                    vastAdvanced: {
-                        vastLoadedCallback: function() {
-                            debugLog('VAST ad loaded successfully');
-                        },
-                        noVastVideoCallback: function() {
-                            debugLog('No VAST video found');
-                        },
-                        vastVideoSkippedCallback: function() {
-                            debugLog('VAST ad skipped');
-                        },
-                        vastVideoEndedCallback: function() {
-                            debugLog('VAST ad ended');
-                        }
+                        position: 'top-left'
                     }
                 }
             };
@@ -562,47 +587,83 @@
             // Add VAST advertising if ad URL provided
             if (adVideoUrl) {
                 debugLog('Adding VAST advertising...');
-                const vastXml = createVastXml(adVideoUrl);
                 
-                // Convert VAST XML to data URL
-                const vastDataUrl = 'data:text/xml;charset=utf-8,' + encodeURIComponent(vastXml);
+                const vastXml = createVastXml(adVideoUrl, 30);
+                const vastBlob = new Blob([vastXml], { type: 'text/xml' });
+                const vastUrl = URL.createObjectURL(vastBlob);
                 
-                fluidConfig.vastOptions.adList = [{
-                    roll: 'preRoll',
-                    vastTag: vastDataUrl,
-                    adText: 'Advertisement'
-                }];
+                fluidConfig.vastOptions = {
+                    adList: [{
+                        roll: 'preRoll',
+                        vastTag: vastUrl,
+                        adText: 'Advertisement',
+                        adTextPosition: 'top-left'
+                    }],
+                    adText: 'Advertisement',
+                    adTextPosition: 'top-left',
+                    adCTAText: 'Learn More',
+                    adCTATextPosition: 'bottom-right',
+                    adSkipButtonText: 'Skip Ad',
+                    skipButtonCaption: 'Skip in ',
+                    skipButtonClickCaption: 'Skip Ad',
+                    adClickable: true,
+                    vastTimeout: 10000,
+                    showProgressbarMarkers: false,
+                    allowVPAID: false,
+                    vastAdvanced: {
+                        vastLoadedCallback: function() {
+                            debugLog('VAST ad loaded successfully');
+                        },
+                        noVastVideoCallback: function() {
+                            debugLog('No VAST video found or failed to load');
+                        },
+                        vastVideoSkippedCallback: function() {
+                            debugLog('VAST ad was skipped');
+                        },
+                        vastVideoEndedCallback: function() {
+                            debugLog('VAST ad playback completed');
+                        },
+                        vastVideoClickedCallback: function() {
+                            debugLog('VAST ad was clicked');
+                        }
+                    }
+                };
                 
-                debugLog('VAST configuration added');
+                debugLog('VAST configuration added with blob URL');
             }
             
-            // Initialize Fluid Player
             try {
+                // Initialize Fluid Player
                 fluidPlayerInstance = fluidPlayer('fluidplayer', fluidConfig);
                 debugLog('Fluid Player initialized successfully');
                 
-                // Add multiple sources for quality selection
-                if (sources.length > 1) {
-                    setTimeout(() => {
-                        addQualityOptions(sources);
-                    }, 1000);
-                }
+                // Create quality selector after player loads
+                setTimeout(() => {
+                    createQualitySelector();
+                }, 1000);
+                
+                // Add video event listeners
+                videoElement.addEventListener('loadstart', () => {
+                    debugLog('Video load started');
+                });
+                
+                videoElement.addEventListener('canplay', () => {
+                    debugLog('Video can play');
+                });
+                
+                videoElement.addEventListener('error', (e) => {
+                    debugLog('Video error: ' + e.message);
+                });
                 
             } catch (error) {
                 debugLog('Error initializing Fluid Player: ' + error.message);
+                console.error('Fluid Player Error:', error);
             }
         }
         
-        // Add quality options (simplified version)
-        function addQualityOptions(sources) {
-            // This is a simplified implementation
-            // Fluid Player has limited built-in quality switching
-            debugLog('Multiple quality sources available: ' + sources.length);
-        }
-        
-        // Test ad
+        // Test ad only
         function testAd() {
-            debugLog('Testing ad...');
+            debugLog('Testing ad only...');
             
             const adVideoUrl = document.getElementById('adVideoUrl').value.trim();
             
@@ -611,73 +672,43 @@
                 return;
             }
             
-            // Create a test video with only ad
-            const testSources = [{
-                src: 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAABhJtZGF0', // Minimal video
-                title: 'Test'
-            }];
+            // Create a minimal test video
+            const testVideoUrl = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAABhJtZGF0';
             
-            // Temporarily set test sources
-            const originalSources = currentVideoSources;
-            currentVideoSources = testSources;
+            // Temporarily set test video
+            document.getElementById('video480p').value = testVideoUrl;
             
-            // Load with ad
             loadVideo();
             
-            // Restore original sources
+            // Clear test video after loading
             setTimeout(() => {
-                currentVideoSources = originalSources;
-            }, 1000);
+                document.getElementById('video480p').value = '';
+            }, 2000);
         }
         
-        // Load sample VAST
-        function loadSampleVast() {
-            document.getElementById('adVideoUrl').value = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-            debugLog('Sample VAST ad URL loaded');
+        // Load sample ad
+        function loadSampleAd() {
+            const sampleAdUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+            document.getElementById('adVideoUrl').value = sampleAdUrl;
+            debugLog('Sample ad URL loaded');
         }
         
-        // Fetch VAST from Gist (with CORS workaround)
-        async function fetchGistVast() {
-            debugLog('Attempting to fetch VAST from gist...');
-            
-            const gistUrl = 'https://gist.githubusercontent.com/decade7117/db928e9cf3f6e37f176df5afaa13524f/raw/';
-            
-            try {
-                // Try to fetch the raw gist content
-                const response = await fetch(gistUrl);
-                const vastContent = await response.text();
-                
-                debugLog('Gist content fetched, length: ' + vastContent.length);
-                
-                // Try to parse and extract media file URL
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(vastContent, 'text/xml');
-                const mediaFile = xmlDoc.querySelector('MediaFile');
-                
-                if (mediaFile) {
-                    const adUrl = mediaFile.textContent.trim();
-                    document.getElementById('adVideoUrl').value = adUrl;
-                    debugLog('Ad URL extracted from gist: ' + adUrl);
-                } else {
-                    debugLog('No MediaFile found in gist content');
-                }
-                
-            } catch (error) {
-                debugLog('Error fetching from gist: ' + error.message);
-                // Fallback: provide manual instructions
-                alert('CORS error. Please manually copy the MediaFile URL from the gist and paste it in the Ad Video URL field.');
-            }
+        // Load test ad
+        function loadTestAd() {
+            const testAdUrl = 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4';
+            document.getElementById('adVideoUrl').value = testAdUrl;
+            debugLog('Test ad URL loaded');
         }
         
         // Generate embed code
         function generateEmbed() {
-            const video480p = document.getElementById('video480p').value;
-            const video720p = document.getElementById('video720p').value;
-            const video1080p = document.getElementById('video1080p').value;
-            const adVideoUrl = document.getElementById('adVideoUrl').value;
+            const video480p = document.getElementById('video480p').value.trim();
+            const video720p = document.getElementById('video720p').value.trim();
+            const video1080p = document.getElementById('video1080p').value.trim();
+            const adVideoUrl = document.getElementById('adVideoUrl').value.trim();
             const width = document.getElementById('playerWidth').value;
             const height = document.getElementById('playerHeight').value;
-            const posterUrl = document.getElementById('posterUrl').value;
+            const posterUrl = document.getElementById('posterUrl').value.trim();
             const skipTime = document.getElementById('skipTime').value;
             
             if (!video480p && !video720p && !video1080p) {
@@ -689,7 +720,8 @@
             const params = new URLSearchParams({
                 width: width,
                 height: height,
-                skip: skipTime
+                skip: skipTime,
+                embed: '1'
             });
             
             if (video480p) params.append('video480p', video480p);
@@ -699,10 +731,12 @@
             if (posterUrl) params.append('poster', posterUrl);
             
             const embedUrl = `${currentUrl}?${params.toString()}`;
-            const embedCode = `<iframe src="${embedUrl}" width="${width}" height="${height}" frameborder="0" allowfullscreen style="display:block;margin:0 auto;"></iframe>`;
+            const embedCode = `<iframe src="${embedUrl}" width="${width}" height="${height}" frameborder="0" allowfullscreen allow="autoplay; encrypted-media" style="display:block;margin:0 auto;max-width:100%;"></iframe>`;
             
             document.getElementById('embedSection').style.display = 'block';
             document.getElementById('embedCode').textContent = embedCode;
+            
+            debugLog('Embed code generated');
         }
         
         // Copy embed code
@@ -714,17 +748,21 @@
                 setTimeout(() => {
                     successMsg.style.display = 'none';
                 }, 3000);
+                debugLog('Embed code copied to clipboard');
+            }).catch(err => {
+                debugLog('Failed to copy embed code: ' + err.message);
             });
         }
         
         // Check for embed parameters
         function checkEmbedParams() {
             const params = new URLSearchParams(window.location.search);
+            const isEmbed = params.get('embed') === '1';
             const video480p = params.get('video480p');
             const video720p = params.get('video720p');
             const video1080p = params.get('video1080p');
             
-            if (video480p || video720p || video1080p) {
+            if (isEmbed && (video480p || video720p || video1080p)) {
                 isEmbedMode = true;
                 const container = document.getElementById('container');
                 const controlsSection = document.getElementById('controlsSection');
@@ -747,23 +785,31 @@
                 
                 debugLog('Embed mode detected, auto-loading video...');
                 
-                // Auto load video
+                // Auto load video after scripts load
                 setTimeout(() => {
                     loadVideo();
-                }, 1000);
+                }, 2000);
             }
         }
         
-        // Initialize on load
-        window.addEventListener('load', function() {
-            debugLog('Page loaded, initializing player...');
-            initializePlayer();
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog('DOM loaded, checking for embed params...');
+            checkEmbedParams();
         });
         
-        // Handle window resize for responsive player
+        // Initialize when window loads (ensure all scripts are loaded)
+        window.addEventListener('load', function() {
+            debugLog('Window loaded, Fluid Player available: ' + (typeof fluidPlayer !== 'undefined'));
+            
+            if (!isEmbedMode) {
+                debugLog('Ready for user interaction');
+            }
+        });
+        
+        // Handle window resize
         window.addEventListener('resize', function() {
-            if (fluidPlayerInstance && isEmbedMode) {
-                // Handle responsive resize if needed
+            if (isEmbedMode) {
                 debugLog('Window resized in embed mode');
             }
         });
